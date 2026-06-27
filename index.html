@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hóa đơn</title>
+<style>
+  :root{ --w: 80mm; --fg:#111; --muted:#555; --line:#000; }
+  *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  html,body{ margin:0; padding:0; background:#e9e9e9; font-family:"Segoe UI",Roboto,Arial,"Noto Sans",sans-serif; color:var(--fg); }
+  #bill{
+    width:var(--w); min-height:50mm; margin:10px auto; background:#fff; padding:6px 8px 14px;
+    box-shadow:0 2px 12px rgba(0,0,0,.18); font-size:12px; line-height:1.42;
+  }
+  .center{ text-align:center; }
+  .spa-name{ font-size:17px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
+  .spa-info{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .branch{ font-size:11px; font-weight:600; margin-top:2px; }
+  h1.title{ font-size:14px; font-weight:800; text-align:center; margin:8px 0 4px; letter-spacing:1px; }
+  .hr{ border:none; border-top:1px dashed var(--line); margin:6px 0; }
+  .hr-solid{ border:none; border-top:1.5px solid var(--line); margin:6px 0; }
+  .row{ display:flex; justify-content:space-between; gap:8px; }
+  .row .k{ color:var(--muted); white-space:nowrap; }
+  .row .v{ text-align:right; font-weight:600; word-break:break-word; }
+  table{ width:100%; border-collapse:collapse; margin-top:2px; }
+  thead th{ font-size:10.5px; text-transform:uppercase; border-bottom:1px solid var(--line); padding:3px 0; text-align:left; color:var(--muted); }
+  thead th.num{ text-align:right; }
+  tbody td{ padding:4px 0 3px; vertical-align:top; }
+  .it-name{ font-weight:600; }
+  .it-sub{ font-size:10.5px; color:var(--muted); }
+  .num{ text-align:right; white-space:nowrap; }
+  tbody tr{ border-bottom:1px dotted #bbb; }
+  .totals .row{ margin-top:3px; }
+  .grand{ font-size:14px; font-weight:800; }
+  .debt{ font-weight:800; }
+  .badge{ display:inline-block; border:1px solid var(--line); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:700; margin-top:4px; }
+  .qr-wrap{ text-align:center; margin-top:8px; }
+  .qr-wrap img{ width:46mm; height:46mm; object-fit:contain; }
+  .qr-cap{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .thanks{ text-align:center; font-size:11px; margin-top:8px; }
+  .policy{ font-size:10px; color:var(--muted); margin-top:6px; line-height:1.4; }
+  .foot{ text-align:center; font-size:10px; color:var(--muted); margin-top:8px; }
+  #toolbar{ width:80mm; margin:0 auto 24px; display:flex; gap:8px; }
+  #toolbar button{ flex:1; padding:10px; font-size:14px; font-weight:700; border:none; border-radius:8px; cursor:pointer; }
+  #print{ background:#111; color:#fff; }
+  #close{ background:#ddd; color:#111; }
+  .empty{ text-align:center; padding:30px 12px; color:#a00; font-size:13px; }
+  @media print{
+    @page{ size:80mm auto; margin:0; }
+    html,body{ background:#fff; }
+    #bill{ width:auto; margin:0; box-shadow:none; padding:0 2mm; font-size:12px; }
+    #toolbar{ display:none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="bill"><div class="empty">Đang tải hóa đơn…</div></div>
+<div id="toolbar">
+  <button id="print" onclick="window.print()">🖨️ In hóa đơn</button>
+  <button id="close" onclick="window.close()">Đóng</button>
+</div>
+<script>
+(function(){
+  // ===== Đọc & giải mã dữ liệu từ URL =====
+  var raw = (location.hash ? location.hash.slice(1) : location.search.slice(1));
+  if(!raw){ document.getElementById('bill').innerHTML='<div class="empty">Không có dữ liệu hóa đơn trong link.</div>'; return; }
+  var data="";
+  try{ data = decodeURIComponent(raw); }catch(e){ data = raw; }
+
+  var F = data.split("~^~");   // các trường header
+  function S(i){ return (F[i]==null?"":F[i]).trim(); }
+
+  var spaName=S(0), spaInfo=S(1), branch=S(2), code=S(3), date=S(4),
+      customer=S(5), phone=S(6), address=S(7), seller=S(8),
+      payMethod=S(9), status=S(10),
+      gross=S(11), net=S(12), paid=S(13), debt=S(14), qr=S(15),
+      prodRaw=S(16);
+
+  // ===== Sản phẩm =====
+  var items=[];
+  if(prodRaw){
+    prodRaw.split("~,~").forEach(function(p){
+      var a=p.split("~");
+      var name=(a[0]||"").trim();
+      if(!name) return;                 // bỏ dòng rỗng
+      items.push({ name:name, qty:+a[1]||0, unit:+a[2]||0, total:+a[3]||0 });
+    });
+  }
+
+  // ===== Helpers =====
+  function vnd(n){ n=Math.round(+n||0); return n.toLocaleString('vi-VN'); }
+  function esc(s){ return (s||"").replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  function clean(s){ // ẩn giá trị placeholder chưa cấu hình
+    if(!s) return "";
+    if(s.indexOf("__")===0 || s.indexOf("__")>-1 && s.indexOf("__",s.indexOf("__")+2)>-1) return "";
+    return s;
+  }
+  spaInfo = spaInfo.replace(/Đ\/c:\s*__[^|]*\|?/,'').replace(/Hotline:\s*__\S*/,'').trim();
+  if(/^[|\s]*$/.test(spaInfo)) spaInfo="";
+
+  function rowKV(k,v,cls){ return v?('<div class="row"><span class="k">'+k+'</span><span class="v '+(cls||'')+'">'+v+'</span></div>'):''; }
+
+  // ===== Render =====
+  var h='';
+  h+='<div class="center">';
+  h+=  '<div class="spa-name">'+esc(spaName||'HÓA ĐƠN')+'</div>';
+  if(spaInfo) h+='<div class="spa-info">'+esc(spaInfo)+'</div>';
+  if(branch)  h+='<div class="branch">'+esc(branch)+'</div>';
+  h+='</div>';
+  h+='<h1 class="title">HÓA ĐƠN BÁN HÀNG</h1>';
+  h+='<hr class="hr">';
+
+  h+=rowKV('Mã đơn', esc(code));
+  h+=rowKV('Ngày', esc(date));
+  h+=rowKV('Khách hàng', esc(customer));
+  h+=rowKV('Điện thoại', esc(phone));
+  h+=rowKV('Địa chỉ', esc(address));
+  h+=rowKV('NV bán', esc(seller));
+  h+='<hr class="hr">';
+
+  if(items.length){
+    h+='<table><thead><tr><th>Sản phẩm / Dịch vụ</th><th class="num">T.Tiền</th></tr></thead><tbody>';
+    items.forEach(function(it){
+      h+='<tr><td><div class="it-name">'+esc(it.name)+'</div>'+
+         '<div class="it-sub">'+vnd(it.qty)+' x '+vnd(it.unit)+'</div></td>'+
+         '<td class="num">'+vnd(it.total)+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }else{
+    h+='<div class="it-sub center" style="padding:6px 0">(Đơn chưa liên kết dòng sản phẩm)</div>';
+  }
+  h+='<hr class="hr-solid">';
+
+  // ===== Tổng tiền =====
+  h+='<div class="totals">';
+  var grossN=+gross||0, netN=+net||0;
+  if(grossN && grossN!==netN) h+=rowKV('Tạm tính', vnd(grossN)+' đ');
+  if(grossN && grossN!==netN) h+=rowKV('Giảm giá', '-'+vnd(grossN-netN)+' đ');
+  h+='<div class="row grand"><span>TỔNG CỘNG</span><span>'+vnd(netN)+' đ</span></div>';
+  if(paid)  h+=rowKV('Đã thanh toán', vnd(paid)+' đ');
+  if(debt && (+debt)>0)  h+=rowKV('Còn nợ', vnd(debt)+' đ', 'debt');
+  h+='</div>';
+  var meta=[];
+  if(payMethod) meta.push(esc(payMethod));
+  if(status) meta.push(esc(status));
+  if(meta.length) h+='<div class="center"><span class="badge">'+meta.join(' • ')+'</span></div>';
+
+  // ===== QR thanh toán =====
+  if(qr && /^https?:\/\//.test(qr)){
+    h+='<div class="qr-wrap"><img src="'+esc(qr)+'" alt="QR thanh toán" onerror="this.parentNode.style.display=\'none\'">'+
+       '<div class="qr-cap">Quét mã để thanh toán</div></div>';
+  }
+
+  // ===== Cảm ơn + chính sách =====
+  h+='<hr class="hr">';
+  h+='<div class="thanks">Cảm ơn Quý khách & hẹn gặp lại! 💖</div>';
+  h+='<div class="policy">• Quý khách vui lòng kiểm tra thông tin & sản phẩm trước khi rời quầy.<br>'+
+     '• Liệu trình/gói dịch vụ áp dụng theo quy định của Spa.<br>'+
+     '• Hotline đặt lịch & chăm sóc sau dịch vụ: vui lòng liên hệ lễ tân.</div>';
+  h+='<div class="foot">'+esc(spaName||'')+' — '+esc(date||'')+'</div>';
+
+  document.getElementById('bill').innerHTML=h;
+  document.title='Bill '+(code||'')+' - '+(customer||'');
+
+  // Tự mở hộp thoại in nếu link có ?print hoặc #...&autoprint
+  if(/(\?|&|;)print\b/.test(location.href)) setTimeout(function(){ window.print(); }, 400);
+})();
+</script>
+</body>
+</html>
