@@ -28,6 +28,7 @@
   tbody td{ padding:4px 0 3px; vertical-align:top; }
   .it-name{ font-weight:600; }
   .it-sub{ font-size:10.5px; color:var(--muted); }
+  .it-km{ font-size:10.5px; color:#111; font-style:italic; margin-top:1px; }
   .num{ text-align:right; white-space:nowrap; }
   tbody tr{ border-bottom:1px dotted #bbb; }
   .totals .row{ margin-top:3px; }
@@ -73,7 +74,7 @@
   var spaName=S(0), spaInfo=S(1), branch=S(2), code=S(3), date=S(4),
       customer=S(5), phone=S(6), address=S(7), seller=S(8),
       payMethod=S(9), status=S(10),
-      gross=S(11), net=S(12), paid=S(13), debt=S(14), qr=S(15),
+      appDiscount=S(11), net=S(12), paid=S(13), debt=S(14), qr=S(15),
       prodRaw=S(16);
 
   // ===== Sản phẩm =====
@@ -83,7 +84,7 @@
       var a=p.split("~");
       var name=(a[0]||"").trim();
       if(!name) return;                 // bỏ dòng rỗng
-      items.push({ name:name, qty:+a[1]||0, unit:+a[2]||0, total:+a[3]||0 });
+      items.push({ name:name, qty:+a[1]||0, unit:+a[2]||0, total:+a[3]||0, km:(a[4]||"").trim() });
     });
   }
 
@@ -122,8 +123,9 @@
     h+='<table><thead><tr><th>Sản phẩm / Dịch vụ</th><th class="num">T.Tiền</th></tr></thead><tbody>';
     items.forEach(function(it){
       h+='<tr><td><div class="it-name">'+esc(it.name)+'</div>'+
-         '<div class="it-sub">'+vnd(it.qty)+' x '+vnd(it.unit)+'</div></td>'+
-         '<td class="num">'+vnd(it.total)+'</td></tr>';
+         '<div class="it-sub">'+vnd(it.qty)+' x '+vnd(it.unit)+'</div>'+
+         (it.km?'<div class="it-km">🎁 KM: '+esc(it.km)+'</div>':'')+
+         '</td><td class="num">'+vnd(it.total)+'</td></tr>';
     });
     h+='</tbody></table>';
   }else{
@@ -133,12 +135,12 @@
 
   // ===== Tổng tiền =====
   h+='<div class="totals">';
-  var grossN=+gross||0, netN=+net||0;
-  if(grossN && grossN!==netN) h+=rowKV('Tạm tính', vnd(grossN)+' đ');
-  if(grossN && grossN!==netN) h+=rowKV('Giảm giá', '-'+vnd(grossN-netN)+' đ');
+  var disc=+appDiscount||0, netN=+net||0;
+  var itemsSum=items.reduce(function(s,it){return s+it.total;},0);
+  if(disc>0){ h+=rowKV('Tạm tính', vnd(itemsSum)+' đ'); h+=rowKV('Giảm giá', '-'+vnd(disc)+' đ'); }
   h+='<div class="row grand"><span>TỔNG CỘNG</span><span>'+vnd(netN)+' đ</span></div>';
-  if(paid)  h+=rowKV('Đã thanh toán', vnd(paid)+' đ');
-  if(debt && (+debt)>0)  h+=rowKV('Còn nợ', vnd(debt)+' đ', 'debt');
+  h+=rowKV('Số tiền thu', vnd(paid)+' đ');
+  if((+debt)>0)  h+=rowKV('Công nợ', vnd(debt)+' đ', 'debt');
   h+='</div>';
   var meta=[];
   if(payMethod) meta.push(esc(payMethod));
