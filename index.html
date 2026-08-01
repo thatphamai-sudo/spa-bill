@@ -50,8 +50,37 @@
   @media print{
     @page{ size:80mm auto; margin:0; }
     html,body{ background:#fff; }
-    #bill{ width:auto; margin:0; box-shadow:none; padding:0 2mm; font-size:12px; }
+    #bill{ width:auto; margin:0; box-shadow:none; padding:0 2mm; font-size:13px; line-height:1.38; font-weight:600; }
     #toolbar{ display:none !important; }
+
+    /* ===== IN ĐẬM =====
+       Máy in nhiệt chỉ in đen/trắng 1-bit: chữ xám + nét mảnh bị rải chấm (dither)
+       nên nhìn rất nhạt. Ép về đen tuyệt đối + nở nét chữ cho ăn mực/ăn nhiệt. */
+    #bill, #bill *{
+      color:#000 !important;
+      -webkit-text-stroke:0.3px #000;   /* nở nét ~1 chấm in, chữ nhỏ vẫn rõ */
+      text-shadow:none !important;
+      -webkit-font-smoothing:none;      /* tắt khử răng cưa -> hết viền xám bị dither */
+      text-rendering:geometricPrecision;
+    }
+    .spa-info,.branch,.row .k,thead th,.it-sub,.it-km,.qr-cap,.thanks,.policy,.foot{ font-weight:600 !important; }
+    .it-name,.row .v,.num{ font-weight:800 !important; }
+    .spa-name{ font-size:18px; font-weight:900; -webkit-text-stroke:0.5px #000; }
+    h1.title{ font-size:15px; font-weight:900; -webkit-text-stroke:0.45px #000; }
+    .grand{ font-size:15px; font-weight:900; -webkit-text-stroke:0.5px #000; }
+    .debt{ font-weight:900; -webkit-text-stroke:0.45px #000; }
+    .spa-info,.it-sub,.it-km,.qr-cap,.thanks{ font-size:11.5px; }
+    thead th{ font-size:11px; border-bottom:2px solid #000; }
+    .policy,.foot{ font-size:11px; }
+    /* kẻ nét đứt/chấm in ra rời rạc & nhạt -> đổi nét liền đen */
+    .hr{ border-top:1px solid #000; }
+    .hr-solid{ border-top:2px solid #000; }
+    tbody tr{ border-bottom:1px solid #000; }
+    .badge{ border:1.5px solid #000; font-weight:900; }
+    /* emoji màu in ra lem/nhạt -> ẩn khi in */
+    .emo{ display:none !important; }
+    /* QR: ép tương phản tối đa cho dễ quét */
+    .qr-wrap img{ filter:grayscale(1) contrast(3); image-rendering:pixelated; }
   }
 </style>
 </head>
@@ -135,7 +164,7 @@
     items.forEach(function(it){
       h+='<tr><td><div class="it-name">'+esc(it.name)+'</div>'+
          '<div class="it-sub">'+vnd(it.qty)+' x '+vnd(it.unit)+'</div>'+
-         (it.km?'<div class="it-km">🎁 KM: '+esc(it.km)+'</div>':'')+
+         (it.km?'<div class="it-km"><span class="emo">🎁 </span>KM: '+esc(it.km)+'</div>':'')+
          '</td><td class="num">'+vnd(it.total)+'</td></tr>';
     });
     h+='</tbody></table>';
@@ -166,7 +195,7 @@
 
   // ===== Cảm ơn + chính sách =====
   h+='<hr class="hr">';
-  h+='<div class="thanks">Cảm ơn Quý khách & hẹn gặp lại! 💖</div>';
+  h+='<div class="thanks">Cảm ơn Quý khách & hẹn gặp lại!<span class="emo"> 💖</span></div>';
   h+='<div class="foot">'+esc(spaName||'')+' — '+esc(date||'')+'</div>';
 
   document.getElementById('bill').innerHTML=h;
