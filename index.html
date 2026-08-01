@@ -19,9 +19,9 @@
   h1.title{ font-size:14px; font-weight:800; text-align:center; margin:8px 0 4px; letter-spacing:1px; }
   .hr{ border:none; border-top:1px dashed var(--line); margin:6px 0; }
   .hr-solid{ border:none; border-top:1.5px solid var(--line); margin:6px 0; }
-  .row{ display:flex; justify-content:space-between; gap:8px; }
+  .row{ display:flex; justify-content:space-between; gap:4px 8px; flex-wrap:wrap; }
   .row .k{ color:var(--muted); white-space:nowrap; }
-  .row .v{ text-align:right; font-weight:600; word-break:break-word; }
+  .row .v{ text-align:right; font-weight:600; flex:1 1 auto; min-width:45%; word-break:normal; overflow-wrap:break-word; }
   table{ width:100%; border-collapse:collapse; margin-top:2px; }
   thead th{ font-size:10.5px; text-transform:uppercase; border-bottom:1px solid var(--line); padding:3px 0; text-align:left; color:var(--muted); }
   thead th.num{ text-align:right; }
