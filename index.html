@@ -15,13 +15,14 @@
   .center{ text-align:center; }
   .spa-name{ font-size:17px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
   .spa-info{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .spa-info.nowrap{ white-space:nowrap; }
   .branch{ font-size:11px; font-weight:600; margin-top:2px; }
   h1.title{ font-size:14px; font-weight:800; text-align:center; margin:8px 0 4px; letter-spacing:1px; }
   .hr{ border:none; border-top:1px dashed var(--line); margin:6px 0; }
   .hr-solid{ border:none; border-top:1.5px solid var(--line); margin:6px 0; }
-  .row{ display:flex; justify-content:space-between; gap:4px 8px; flex-wrap:wrap; }
+  .row{ display:flex; justify-content:space-between; gap:8px; }
   .row .k{ color:var(--muted); white-space:nowrap; }
-  .row .v{ text-align:right; font-weight:600; flex:1 1 auto; min-width:45%; word-break:normal; overflow-wrap:break-word; }
+  .row .v{ text-align:right; font-weight:600; word-break:break-word; }
   table{ width:100%; border-collapse:collapse; margin-top:2px; }
   thead th{ font-size:10.5px; text-transform:uppercase; border-bottom:1px solid var(--line); padding:3px 0; text-align:left; color:var(--muted); }
   thead th.num{ text-align:right; }
@@ -137,7 +138,9 @@
     return s;
   }
   spaInfo = spaInfo.replace(/Đ\/c:\s*__[^|]*\|?/,'').replace(/Hotline:\s*__\S*/,'').trim();
-  if(/^[|\s]*$/.test(spaInfo)) spaInfo="";
+  // Tách "Đ/c: ... | Hotline: ..." thành các dòng riêng biệt, để địa chỉ dài
+  // không bao giờ kéo số hotline vỡ dòng chung với nó.
+  var spaInfoLines = spaInfo.split('|').map(function(s){return s.trim();}).filter(Boolean);
 
   function rowKV(k,v,cls){ return v?('<div class="row"><span class="k">'+k+'</span><span class="v '+(cls||'')+'">'+v+'</span></div>'):''; }
 
@@ -145,7 +148,10 @@
   var h='';
   h+='<div class="center">';
   h+=  '<div class="spa-name">'+esc(spaName||'HÓA ĐƠN')+'</div>';
-  if(spaInfo) h+='<div class="spa-info">'+esc(spaInfo)+'</div>';
+  spaInfoLines.forEach(function(line){
+    var isHotline = /^hotline/i.test(line);
+    h+='<div class="spa-info'+(isHotline?' nowrap':'')+'">'+esc(line)+'</div>';
+  });
   if(branch)  h+='<div class="branch">'+esc(branch)+'</div>';
   h+='</div>';
   h+='<h1 class="title">HÓA ĐƠN BÁN HÀNG</h1>';
@@ -155,7 +161,6 @@
   h+=rowKV('Ngày', esc(date));
   h+=rowKV('Khách hàng', esc(customer));
   h+=rowKV('Điện thoại', esc(phone));
-  h+=rowKV('Địa chỉ', esc(address));
   h+=rowKV('NV bán', esc(seller));
   h+='<hr class="hr">';
 
